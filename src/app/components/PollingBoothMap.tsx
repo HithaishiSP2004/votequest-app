@@ -1,29 +1,52 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 export default function PollingBoothMap() {
   const [searchQuery, setSearchQuery] = useState('');
   const [mapQuery, setMapQuery] = useState('polling booth near me India');
+  const [embedUrl, setEmbedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      setMapQuery(`polling booth near ${searchQuery} India`);
+  // Fetch the embed URL from our server-side API route.
+  // The Google Maps API key stays on the server (GOOGLE_MAPS_API_KEY)
+  // and is never exposed to the browser bundle.
+  const fetchEmbedUrl = async (q: string) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/maps?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      setEmbedUrl(data.embedUrl || null);
+    } catch {
+      setEmbedUrl(null);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const encodedQuery = encodeURIComponent(mapQuery);
-  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
-  const mapsEmbedUrl = `https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${encodedQuery}&language=en`;
+  // Load default map on mount
+  useEffect(() => {
+    fetchEmbedUrl(mapQuery);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      const q = `polling booth near ${searchQuery} India`;
+      setMapQuery(q);
+      fetchEmbedUrl(q);
+    }
+  };
 
   return (
-    <div className="polling-booth-map" style={{ marginTop: 20 }}>
+    <div style={{ marginTop: 20 }}>
       <h3 style={{
         fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: '1rem',
         marginBottom: 12, color: 'var(--text)',
       }}>
         🗺️ Find Your Polling Booth — Google Maps
       </h3>
+
       <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
         <input
           type="text"
@@ -44,7 +67,14 @@ export default function PollingBoothMap() {
         </button>
       </div>
 
-      {apiKey ? (
+      {loading ? (
+        <div style={{
+          height: 350, display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--surface)', borderRadius: 'var(--radius)', border: '1px solid var(--border)',
+        }}>
+          <div className="spinner" style={{ width: 28, height: 28, borderWidth: 2 }} />
+        </div>
+      ) : embedUrl ? (
         <iframe
           title="Polling Booth Map"
           width="100%"
@@ -53,7 +83,7 @@ export default function PollingBoothMap() {
           loading="lazy"
           allowFullScreen
           referrerPolicy="no-referrer-when-downgrade"
-          src={mapsEmbedUrl}
+          src={embedUrl}
         />
       ) : (
         <div style={{
