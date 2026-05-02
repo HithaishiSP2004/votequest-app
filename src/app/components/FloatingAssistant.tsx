@@ -216,8 +216,8 @@ export default function FloatingAssistant() {
                           <IconBot size={10} color="#fff" strokeWidth={2} />
                         </div>
                         <span style={{ fontFamily:"'DM Mono',monospace", fontSize:'0.58rem', color:'rgba(255,255,255,0.4)', textTransform:'uppercase', letterSpacing:'0.06em' }}>Guide</span>
-                        <button onClick={readLast} title="Read aloud" style={{ background:'none', border:'none', cursor:'pointer', color: isSpeaking ? '#FF9933' : 'rgba(255,255,255,0.3)', padding:0, lineHeight:1 }}>
-                          {isSpeaking ? <IconVolumeOff size={11} onClick={stopSpeaking} /> : <IconVolume size={11} />}
+                        <button onClick={isSpeaking ? stopSpeaking : readLast} title={isSpeaking ? "Stop speaking" : "Read aloud"} style={{ background:'none', border:'none', cursor:'pointer', color: isSpeaking ? '#FF9933' : 'rgba(255,255,255,0.3)', padding:0, lineHeight:1 }}>
+                          {isSpeaking ? <IconVolumeOff size={11} /> : <IconVolume size={11} />}
                         </button>
                       </div>
                     )}
