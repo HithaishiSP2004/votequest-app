@@ -4,35 +4,20 @@ import { useState } from 'react';
 
 export default function PollingBoothMap() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [embedUrl, setEmbedUrl] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
+  const [embedUrl, setEmbedUrl] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSearch = async () => {
-    const loc = searchQuery.trim();
-    if (!loc) return;
-
-    setLoading(true);
-    setError('');
-
+    if (!searchQuery.trim()) return;
+    setIsLoading(true);
     try {
-      const res = await fetch(`/api/maps?location=${encodeURIComponent(loc)}`);
+      const res = await fetch(`/api/maps?location=${encodeURIComponent(searchQuery)}`);
       const data = await res.json();
-
-      if (data.error) {
-        setError(data.error);
-        setEmbedUrl('');
-      } else {
-        // Setting a new string value always triggers a React re-render
-        // The iframe key={embedUrl} forces full unmount+remount each time
-        setEmbedUrl(data.embedUrl);
-      }
-    } catch (e) {
-      console.error('Maps fetch error:', e);
-      setError('Failed to load map. Please try again.');
-      setEmbedUrl('');
+      setEmbedUrl(data.embedUrl);
+    } catch (err) {
+      console.error('Map search failed:', err);
     } finally {
-      setLoading(false);
+      setIsLoading(false);
     }
   };
 
@@ -62,16 +47,16 @@ export default function PollingBoothMap() {
           className="btn-primary"
           style={{
             flexShrink: 0, fontSize: '0.85rem', padding: '8px 18px',
-            opacity: loading ? 0.6 : 1,
+            opacity: isLoading ? 0.6 : 1,
           }}
-          disabled={loading || !searchQuery.trim()}
+          disabled={isLoading || !searchQuery.trim()}
         >
-          {loading ? '…' : 'Search'}
+          {isLoading ? '…' : 'Search'}
         </button>
       </div>
 
       {/* Active query label */}
-      {embedUrl && !loading && (
+      {embedUrl && (
         <div style={{
           fontSize: '0.74rem', color: 'var(--cyan)',
           fontFamily: "'DM Mono',monospace", marginBottom: 8,
@@ -80,62 +65,45 @@ export default function PollingBoothMap() {
         </div>
       )}
 
-      {/* Map area */}
-      {loading && (
-        <div style={{
-          height: 350, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'var(--surface)', borderRadius: 'var(--radius)',
-          border: '1px solid var(--border)',
-        }}>
-          <div className="spinner" style={{ width: 28, height: 28, borderWidth: 2 }} />
-        </div>
-      )}
-
-      {!loading && embedUrl && (
-        // key={embedUrl} — React unmounts old iframe and mounts a fresh one
-        // whenever the src URL changes. This is required because browsers
-        // do not reload an existing iframe when only the src attribute updates.
+      {/* Map / placeholder */}
+      {embedUrl ? (
+        // key={embedUrl} forces React to fully unmount+remount the iframe
+        // on every new URL — without this, browsers ignore src changes
+        // on the same iframe DOM element.
         <iframe
           key={embedUrl}
           src={embedUrl}
-          title="Polling Booth Map"
           width="100%"
-          height="350"
-          style={{ border: 0, borderRadius: 'var(--radius)', display: 'block' }}
+          height="400"
+          style={{ border: 0, borderRadius: '8px', display: 'block' }}
           allowFullScreen
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
+          title="Polling booth location map"
         />
-      )}
-
-      {!loading && !embedUrl && !error && (
+      ) : (
         <div style={{
           height: 200, display: 'flex', flexDirection: 'column',
           alignItems: 'center', justifyContent: 'center', gap: 12,
-          background: 'var(--surface)', borderRadius: 'var(--radius)',
+          background: 'var(--surface)', borderRadius: '8px',
           border: '1px solid var(--border)', color: 'var(--text-muted)',
         }}>
-          <span style={{ fontSize: '2rem' }}>🗺️</span>
-          <span style={{ fontSize: '0.85rem' }}>Enter a location above and click Search</span>
-        </div>
-      )}
-
-      {!loading && error && (
-        <div style={{
-          background: 'rgba(108,99,255,0.08)', border: '1px solid rgba(108,99,255,0.25)',
-          borderRadius: 'var(--radius)', padding: '18px 20px',
-          fontSize: '0.85rem', color: 'var(--text-muted)',
-        }}>
-          <p style={{ fontWeight: 600, marginBottom: 6, color: 'var(--text)' }}>📍 Polling Booth Locator</p>
-          <p style={{ marginBottom: 10 }}>Maps API not available. Find your booth on the official ECI portal:</p>
-          <a
-            href="https://electoralsearch.eci.gov.in/"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{ color: 'var(--primary)', fontWeight: 600, textDecoration: 'underline' }}
-          >
-            electoralsearch.eci.gov.in →
-          </a>
+          {isLoading ? (
+            <div className="spinner" style={{ width: 28, height: 28, borderWidth: 2 }} />
+          ) : (
+            <>
+              <span style={{ fontSize: '2rem' }}>🗺️</span>
+              <span style={{ fontSize: '0.85rem' }}>Enter a location above and click Search</span>
+              <a
+                href="https://electoralsearch.eci.gov.in/"
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ fontSize: '0.8rem', color: 'var(--primary)', textDecoration: 'underline' }}
+              >
+                Or search on electoralsearch.eci.gov.in →
+              </a>
+            </>
+          )}
         </div>
       )}
 
