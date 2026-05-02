@@ -1,28 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Server-side Google Maps Embed API route.
-// The API key stays on the server (GOOGLE_MAPS_API_KEY, no NEXT_PUBLIC_ prefix)
-// and is never exposed to the browser bundle.
-//
-// Accepts:  ?location=ramanagara+Karnataka
-// Builds:   polling booth ramanagara Karnataka India
 export async function GET(request: NextRequest) {
-  const { searchParams } = new URL(request.url);
-  const location = searchParams.get('location') || '';
-
+  const location = request.nextUrl.searchParams.get('location') || 'India';
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
 
   if (!apiKey) {
-    return NextResponse.json({ embedUrl: null }, { status: 200 });
+    console.error('[/api/maps] ERROR: GOOGLE_MAPS_API_KEY is not set');
+    return NextResponse.json({ error: 'Maps API key not configured' }, { status: 500 });
   }
 
-  // Build a precise query: "polling booth <location> India"
-  // This ensures Maps zooms to the right area instead of world view
-  const query = location.trim()
-    ? `polling booth ${location.trim()} India`
-    : 'polling booth India';
+  const query = encodeURIComponent(`polling booth ${location} India`);
+  const embedUrl = `https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${query}&zoom=13&language=en`;
 
-  const embedUrl = `https://www.google.com/maps/embed/v1/search?key=${apiKey}&q=${encodeURIComponent(query)}&language=en`;
+  // Debug log — verify key is present and URL is correct
+  console.log('[/api/maps] location:', location);
+  console.log('[/api/maps] query:', `polling booth ${location} India`);
+  console.log('[/api/maps] embedUrl (first 80 chars):', embedUrl.slice(0, 80));
+  console.log('[/api/maps] apiKey present:', !!apiKey, '| key length:', apiKey.length);
 
-  return NextResponse.json({ embedUrl, query });
+  return NextResponse.json({ embedUrl });
 }
