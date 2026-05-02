@@ -2,16 +2,17 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLang } from '../lib/LangContext';
 import { IconBot, IconSend, IconMic, IconMicOff, IconVolume, IconVolumeOff, IconVote, IconCalendar, IconShield, IconUsers, IconMap, IconTarget } from './Icons';
+import LanguageSelector from './LanguageSelector';
 
 interface Message { role: 'user' | 'model'; content: string; }
 
 const quickTopics = [
-  { Icon: IconVote,    label: 'Voter Registration', msg: 'How do I register to vote?' },
-  { Icon: IconCalendar,label: 'Early Voting',        msg: 'How does early voting work?' },
-  { Icon: IconShield,  label: 'Voter Rights',        msg: 'What are my rights as a voter?' },
-  { Icon: IconMap,     label: 'Electoral College',   msg: 'How does the Electoral College work?' },
-  { Icon: IconTarget,  label: 'Vote Counting',       msg: 'How are votes counted and certified?' },
-  { Icon: IconUsers,   label: 'Types of Elections',  msg: 'What are the different types of elections?' },
+  { Icon: IconVote,    label: 'Voter Registration (Form 6)', msg: 'How do I register to vote using Form 6?' },
+  { Icon: IconShield,  label: 'EVM and VVPAT',               msg: 'How does the EVM and VVPAT work in Indian elections?' },
+  { Icon: IconCalendar,label: 'Model Code of Conduct',       msg: 'What is the Model Code of Conduct in India?' },
+  { Icon: IconTarget,  label: 'NOTA',                        msg: 'What is NOTA and how does it work in Indian elections?' },
+  { Icon: IconMap,     label: 'Lok Sabha vs Rajya Sabha',    msg: 'What is the difference between Lok Sabha and Rajya Sabha?' },
+  { Icon: IconUsers,   label: 'cVIGIL App',                  msg: 'What is the cVIGIL app and how do I use it to report election violations?' },
 ];
 
 function formatMsg(t: string) {
@@ -37,8 +38,25 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
   const [mode, setMode] = useState<'chat' | 'journey'>('chat');
   const [isListening, setIsListening] = useState(false);
   const [autoRead, setAutoRead] = useState(false);
+  const [selectedLang, setSelectedLang] = useState('en');
   const endRef = useRef<HTMLDivElement>(null);
   const recogRef = useRef<any>(null);
+
+  // Google Cloud Translation API — translate AI responses to selected Indian language
+  const translateText = async (text: string, targetLang: string): Promise<string> => {
+    if (targetLang === 'en') return text;
+    try {
+      const res = await fetch('/api/translate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, targetLanguage: targetLang }),
+      });
+      const data = await res.json();
+      return data.translatedText || text;
+    } catch {
+      return text; // fallback to English silently
+    }
+  };
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
 
@@ -59,7 +77,9 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
         body: JSON.stringify({ message: text, history: messages.slice(-10), mode, stageContext: 'General Election Education' }),
       });
       const data = await res.json();
-      const reply = data.reply || data.text || '⚠️ No response received.';
+      const rawReply = data.reply || data.text || '⚠️ No response received.';
+      // Translate reply via Google Cloud Translation API if language is selected
+      const reply = await translateText(rawReply, selectedLang);
       setMessages(prev => [...prev, { role: 'model', content: reply }]);
       if (autoRead) speak(reply.replace(/\*\*/g, '').replace(/\*/g, '').replace(/<[^>]+>/g, ''));
       onXP(10, 'Question answered!');
@@ -128,7 +148,7 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
         {/* Main */}
         <div style={{ display:'flex', flexDirection:'column', gap:14 }}>
           {/* Header bar */}
-          <div className="glass-sm" style={{ padding:'12px 18px', display:'flex', alignItems:'center', gap:12 }}>
+          <div className="glass-sm" style={{ padding:'12px 18px', display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
             <div style={{ width:42, height:42, borderRadius:'50%', background:'linear-gradient(135deg,var(--primary),var(--cyan))', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 0 18px var(--primary-glow)', flexShrink:0 }}>
               <IconBot size={22} color="#fff" strokeWidth={1.8}/>
             </div>
@@ -136,7 +156,9 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
               <div style={{ fontFamily:"'Outfit',sans-serif", fontWeight:700, fontSize:'0.95rem' }}>VoteQuest AI Guide</div>
               <div style={{ fontSize:'0.74rem', color:'var(--cyan)' }}>Powered by Google Gemini · {messages.length - 1} messages</div>
             </div>
-            <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center' }}>
+            <div style={{ marginLeft:'auto', display:'flex', gap:8, alignItems:'center', flexWrap:'wrap' }}>
+              {/* Google Cloud Translation API — language selector */}
+              <LanguageSelector />
               {/* Read last answer aloud */}
               <button onClick={readLast} title="Read last answer aloud"
                 style={{ display:'flex', alignItems:'center', gap:5, padding:'6px 10px', borderRadius:8, border:`1px solid ${isSpeaking?'var(--cyan)':'var(--border)'}`, background: isSpeaking?'rgba(0,212,255,0.1)':'transparent', color: isSpeaking?'var(--cyan)':'var(--text-muted)', cursor:'pointer', fontSize:'0.75rem', fontFamily:"'Inter',sans-serif", transition:'all 0.2s' }}>

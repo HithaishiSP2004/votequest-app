@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import PollingBoothMap from './PollingBoothMap';
 
 interface FindPanelProps {
   onXP: (n: number, reason: string) => void;
@@ -121,41 +122,8 @@ export default function FindPanel({ onXP }: FindPanelProps) {
 
         {/* Right: Map + Resources */}
         <div>
-          {/* Map placeholder with Indian styling */}
-          <div style={{
-            height: 380, background: 'var(--surface)', border: '1px solid var(--border)',
-            borderRadius: 'var(--radius-lg)', display: 'flex', alignItems: 'center', justifyContent: 'center',
-            position: 'relative', overflow: 'hidden', marginBottom: 20,
-          }}>
-            {/* Tricolor gradient overlay */}
-            <div style={{ position: 'absolute', inset: 0, opacity: 0.04,
-              backgroundImage: 'linear-gradient(var(--primary) 1px, transparent 1px), linear-gradient(90deg, var(--primary) 1px, transparent 1px)',
-              backgroundSize: '40px 40px' }} />
-            {/* Indian flag color stripe */}
-            <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: 4, background: 'linear-gradient(90deg, #FF9933 33%, #fff 33% 66%, #138808 66%)' }} />
-            <div style={{ textAlign: 'center', position: 'relative', zIndex: 1 }}>
-              <div style={{ fontSize: '3.5rem', marginBottom: 14, filter: 'drop-shadow(0 0 20px rgba(108,99,255,0.4))' }}>🏛️</div>
-              <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: '1rem', marginBottom: 6 }}>
-                Your Polling Booth Map
-              </div>
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 4 }}>
-                Enter your area to locate polling booths
-              </div>
-              <div style={{ fontFamily: "'DM Mono',monospace", fontSize: '0.7rem', color: 'var(--text-dim)', marginBottom: 16 }}>
-                🇮🇳 Powered by ECI Voter Portal
-              </div>
-              <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                <a href="https://voters.eci.gov.in" target="_blank" rel="noopener noreferrer"
-                  className="btn-secondary" style={{ fontSize: '0.8rem', padding: '8px 18px', display: 'inline-flex' }}>
-                  ECI Voter Portal ↗
-                </a>
-                <a href="https://www.google.com/maps/search/polling+booth+near+me" target="_blank" rel="noopener noreferrer"
-                  className="btn-secondary" style={{ fontSize: '0.8rem', padding: '8px 18px', display: 'inline-flex' }}>
-                  Google Maps ↗
-                </a>
-              </div>
-            </div>
-          </div>
+          {/* Google Maps Embed for Polling Booth Discovery */}
+          <PollingBoothMap />
 
           {/* Key resources */}
           <div className="glass-sm" style={{ padding: 20 }}>
