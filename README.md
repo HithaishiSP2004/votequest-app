@@ -1,36 +1,268 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# VoteQuest Upgrade Blueprint
+You are building a production-level AI system.
 
-## Getting Started
+Follow STRICTLY the instructions from the blueprint below.
+Do NOT over-engineer.
+Do NOT add extra features.
 
-First, run the development server:
+README.md
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+---
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Use the following research ONLY as reference for:
+- correctness
+- domain knowledge
+- election concepts
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Do NOT blindly implement everything from it.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+read1.md
+## PURPOSE
 
-## Learn More
+This document defines the exact system behavior for building VoteQuest as a smart, real-world Election Companion AI.
 
-To learn more about Next.js, take a look at the following resources:
+Goal: Build a clean, decision-driven, efficient system that demonstrates intelligence, usability, and strong architecture.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# CORE TRANSFORMATION
 
-## Deploy on Vercel
+Current State:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+* Chatbot-based responses
+* Separate modules (quiz, journey, resources)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Target State:
+
+* Unified AI system
+* Context-aware decision making
+* Guided user experience
+
+The system must guide users step-by-step instead of only answering queries.
+
+---
+
+# SYSTEM FLOW
+
+User Input → Intent Detection → Decision Engine → Response Type
+
+Response Types:
+
+1. Guided Flow
+2. Structured Answer (predefined knowledge)
+3. AI Response (only when required)
+4. Personalized Advisor Output
+
+The decision engine must act as the central controller.
+
+---
+
+# INTENT HANDLING REQUIREMENTS
+
+The system must detect and classify user intent into categories such as:
+
+* Voter Help
+* Results Information
+* Eligibility / Advisor
+* Learning / Quiz
+* General Queries
+
+Intent detection must be simple, fast, and deterministic.
+
+---
+
+# PRIMARY FEATURE: GUIDED ELECTION FLOW
+
+The system must provide a structured voting journey when relevant.
+
+Steps include:
+
+* Eligibility check
+* Registration process (Form 6)
+* Voter list verification
+* EPIC (Voter ID)
+* Polling booth identification
+* Voting process
+
+Requirements:
+
+* Must be step-based
+* Must support progression (Next Step behavior)
+* Must be clear and minimal
+
+---
+
+# SECONDARY FEATURE: SMART ELECTION ADVISOR
+
+The system must provide personalized guidance.
+
+Input (minimal):
+
+* Age
+* First-time voter status
+
+Output:
+
+* Eligibility status
+* Next required step
+* Recommended action
+
+This feature must demonstrate logical decision-making.
+
+---
+
+# KNOWLEDGE HANDLING STRATEGY
+
+Priority order:
+
+1. Predefined structured data
+2. Cached responses
+3. AI-generated responses
+
+Rules:
+
+* Do not rely fully on AI for core information
+* Avoid hallucination
+* Prefer deterministic outputs where possible
+
+---
+
+# AI USAGE RULES
+
+Use AI only for:
+
+* Complex or unknown queries
+* Explanations
+* Quiz/scenario generation
+
+Avoid AI for:
+
+* FAQs
+* Standard election steps
+* Repetitive responses
+
+AI responses must be:
+
+* Neutral
+* Short
+* Clear
+* Instructional when possible
+
+---
+
+# QUIZ SYSTEM UPGRADE
+
+The system must move beyond static MCQs.
+
+New behavior:
+
+* Generate scenario-based questions
+* Accept open-ended answers
+* Evaluate reasoning (not just correctness)
+* Provide explanation feedback
+
+Focus on real-world understanding.
+
+---
+
+# SAFETY AND NEUTRALITY
+
+The system must:
+
+* Remain politically neutral
+* Reject biased or promotional requests
+* Avoid harmful or misleading outputs
+
+User inputs must be validated before processing.
+
+---
+
+# GOOGLE SERVICES USAGE
+
+Required:
+
+* Gemini (AI generation)
+
+Additional integration (at least one):
+
+* Maps (polling booth visualization)
+
+Optional:
+
+* Firebase (user progress, state)
+
+Integration must be meaningful, not superficial.
+
+---
+
+# PERFORMANCE AND EFFICIENCY
+
+The system must:
+
+* Minimize external API calls
+* Use caching where possible
+* Respond quickly
+
+Efficiency is a key evaluation factor.
+
+---
+
+# CODE QUALITY EXPECTATIONS
+
+The system must:
+
+* Separate concerns (logic, services, routes)
+* Avoid tightly coupled logic
+* Maintain readability and modularity
+
+The decision engine must control flow, not UI or API calls directly.
+
+---
+
+# TESTING REQUIREMENTS
+
+Validate:
+
+* Intent detection accuracy
+* Guided flow correctness
+* Advisor logic accuracy
+* AI fallback behavior
+
+Testing can be simple but must exist.
+
+---
+
+# EXCLUDED FEATURES (DO NOT IMPLEMENT)
+
+* Complex RAG pipelines
+* Real-time scraping systems
+* Voice interfaces
+* Heavy multimodal processing
+
+Focus on core system strength.
+
+---
+
+# FINAL SYSTEM IDENTITY
+
+VoteQuest must function as:
+
+* A decision-driven assistant
+* A guided election support system
+* A real-world usable civic tool
+
+Not just a chatbot.
+
+---
+
+# SUCCESS CONDITION
+
+The system is successful if:
+
+* Users are guided step-by-step
+* Responses are accurate and structured
+* AI usage is efficient and controlled
+* The experience feels practical and usable
+
+---
+
