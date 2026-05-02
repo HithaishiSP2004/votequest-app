@@ -4,16 +4,17 @@ import { useState } from 'react';
 
 export default function PollingBoothMap() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [embedUrl, setEmbedUrl] = useState<string>('');
+  const [mapEmbedUrl, setMapEmbedUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
     setIsLoading(true);
     try {
-      const res = await fetch(`/api/maps?location=${encodeURIComponent(searchQuery)}`);
+      const res = await fetch('/api/maps?location=' + encodeURIComponent(searchQuery));
       const data = await res.json();
-      setEmbedUrl(data.embedUrl);
+      console.log('Setting embed URL:', data.embedUrl);
+      setMapEmbedUrl(data.embedUrl);
     } catch (err) {
       console.error('Map search failed:', err);
     } finally {
@@ -56,7 +57,7 @@ export default function PollingBoothMap() {
       </div>
 
       {/* Active query label */}
-      {embedUrl && (
+      {mapEmbedUrl && (
         <div style={{
           fontSize: '0.74rem', color: 'var(--cyan)',
           fontFamily: "'DM Mono',monospace", marginBottom: 8,
@@ -66,13 +67,13 @@ export default function PollingBoothMap() {
       )}
 
       {/* Map / placeholder */}
-      {embedUrl ? (
-        // key={embedUrl} forces React to fully unmount+remount the iframe
+      {mapEmbedUrl ? (
+        // key={mapEmbedUrl} forces React to fully unmount+remount the iframe
         // on every new URL — without this, browsers ignore src changes
         // on the same iframe DOM element.
         <iframe
-          key={embedUrl}
-          src={embedUrl}
+          key={mapEmbedUrl}
+          src={mapEmbedUrl}
           width="100%"
           height="400"
           style={{ border: 0, borderRadius: '8px', display: 'block' }}
