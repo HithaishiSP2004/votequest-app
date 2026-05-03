@@ -68,12 +68,6 @@ interface SpeechRecognitionEvent extends Event {
   results: SpeechRecognitionResultList;
 }
 
-declare global {
-  interface Window {
-    SpeechRecognition: new () => ISpeechRecognition;
-    webkitSpeechRecognition: new () => ISpeechRecognition;
-  }
-}
 
 interface ChatPanelProps {
   initialMsg?: string;
@@ -171,9 +165,9 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
   }, [input, loading, mode, lang, autoRead, speak, onXP, translateText, stripMarkup]);
 
   const startVoice = () => {
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) { alert('Voice input not supported in your browser. Try Chrome.'); return; }
-    const rec = new SR(); recogRef.current = rec;
+    const rec = new SR() as ISpeechRecognition; recogRef.current = rec;
     rec.lang = speechLang; rec.interimResults = false;
     rec.onstart = () => setIsListening(true);
     rec.onresult = (e: SpeechRecognitionEvent) => { const tr = e.results[0][0].transcript; setInput(tr); setTimeout(() => sendMessage(tr), 300); };
