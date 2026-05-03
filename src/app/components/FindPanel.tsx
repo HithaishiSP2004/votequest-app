@@ -65,12 +65,13 @@ export default function FindPanel({ onXP }: FindPanelProps) {
           </p>
 
           <div style={{ marginBottom: 16 }}>
-            <label className="form-label">Constituency / Area / Village</label>
-            <input className="form-input" placeholder="e.g. Connaught Place, Karol Bagh, Sector 15..." value={constituency} onChange={e => setConstituency(e.target.value)} />
+            <label htmlFor="find-constituency" className="form-label">Constituency / Area / Village</label>
+            <input id="find-constituency" className="form-input" placeholder="e.g. Connaught Place, Karol Bagh, Sector 15..." value={constituency} onChange={e => setConstituency(e.target.value)} />
           </div>
           <div style={{ marginBottom: 20 }}>
-            <label className="form-label">State / Union Territory</label>
+            <label htmlFor="find-state" className="form-label">State / Union Territory</label>
             <select
+              id="find-state"
               className="form-input"
               value={state}
               onChange={e => setState(e.target.value)}

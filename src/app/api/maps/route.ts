@@ -61,6 +61,8 @@ export async function GET(request: NextRequest) {
       console.error('[/api/maps] Geocoding request error:', err);
     }
 
+    // Prevent unbounded memory growth in long-running containers
+    if (geocodeCache.size >= 200) geocodeCache.clear();
     geocodeCache.set(cacheKey, { lat, lng, fallback, ts: Date.now() });
   }
 
