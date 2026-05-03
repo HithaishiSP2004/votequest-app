@@ -3,8 +3,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useLang } from '../lib/LangContext';
 import { IconVote, IconShield, IconCalendar, IconUsers, IconArrowRight, IconLightning, IconTrendingUp, IconStar, IconTarget } from './Icons';
 
+type Tab = 'home' | 'chat' | 'journey' | 'quiz' | 'find' | 'resources' | 'advisor';
+
 interface HomePanelProps {
-  onNavigate: (tab: string, msg?: string) => void;
+  onNavigate: (tab: Tab, msg?: string) => void;
   xp: number;
   quizScore: number;
 }
