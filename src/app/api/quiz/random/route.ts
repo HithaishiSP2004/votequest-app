@@ -129,18 +129,18 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
 Make the question educational, factually accurate about Indian elections and democracy, and appropriate for adult learners. Focus specifically on India's electoral system. Keep in mind the current year is ${new Date().getFullYear()}.`;
 
     // Add retry logic for intermittent network "fetch failed" errors
-    let result;
+    let result: Awaited<ReturnType<typeof model.generateContent>> | undefined;
     let retries = 2;
     while (retries > 0) {
       try {
         result = await Promise.race([
           model.generateContent(prompt),
-          new Promise((_, reject) =>
+          new Promise<never>((_, reject) =>
             setTimeout(() => reject(new Error('Gemini request timeout after 10s')), 10000)
           ),
         ]);
         break; // Success, exit retry loop
-      } catch (err: any) {
+      } catch (err: unknown) {
         retries--;
         if (retries === 0) throw err; // Out of retries
         console.warn(`[Quiz API] Gemini fetch failed, retrying... (${retries} attempts left)`);
