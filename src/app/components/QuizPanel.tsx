@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 
 interface QuizQuestion {
   question: string;
@@ -19,26 +19,46 @@ export default function QuizPanel({ onXP }: QuizPanelProps) {
   const [score, setScore] = useState(0);
   const [total, setTotal] = useState(0);
   const [streak, setStreak] = useState(0);
+  const [errorMsg, setErrorMsg] = useState('Error loading question. Check your API connection.');
+  const abortRef = useRef<AbortController | null>(null);
 
-  const loadQuiz = async () => {
+  useEffect(() => () => abortRef.current?.abort(), []);
+
+  /** Fetches a new random quiz question from the AI-generated question bank */
+  const loadQuiz = useCallback(async () => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
     setPhase('loading');
     setSelected(null);
+    setErrorMsg('Error loading question. Check your API connection.');
     try {
-      const res = await fetch('/api/quiz/random');
+      const res = await fetch('/api/quiz/random', { signal: controller.signal });
+      if (!res.ok) throw new Error(`Quiz request failed (${res.status})`);
       const data = await res.json();
-      if (data.question) {
+      const isValidData =
+        typeof data?.question === 'string' &&
+        Array.isArray(data?.options) &&
+        data.options.length === 4 &&
+        typeof data?.correct === 'string' &&
+        typeof data?.explanation === 'string';
+      if (isValidData) {
         setQuestion(data);
         setTotal(t => t + 1);
         setPhase('question');
       } else {
+        setErrorMsg('Received malformed quiz data. Please try again.');
         setPhase('error');
       }
-    } catch {
+    } catch (err: unknown) {
+      if ((err as Error).name === 'AbortError') return;
+      setErrorMsg('Unable to load quiz question right now. Please try again.');
       setPhase('error');
     }
-  };
+  }, []);
 
-  const selectAnswer = (letter: string) => {
+  /** Handles answer selection and awards XP based on correctness and streak */
+  const selectAnswer = useCallback((letter: string) => {
     if (selected || !question) return;
     setSelected(letter);
     const correct = letter === question.correct;
@@ -51,7 +71,7 @@ export default function QuizPanel({ onXP }: QuizPanelProps) {
       setStreak(0);
       onXP(5, 'Keep learning!');
     }
-  };
+  }, [selected, question, streak, onXP]);
 
   const accuracy = total > 0 ? Math.round((score / total) * 100) : 0;
 
@@ -91,7 +111,7 @@ export default function QuizPanel({ onXP }: QuizPanelProps) {
 
       {/* Content */}
       {phase === 'start' && (
-        <div className="glass" style={{ textAlign: 'center', padding: '56px 40px' }}>
+        <div className="glass" style={{ textAlign: 'center', padding: '56px 40px' }} role="status" aria-live="polite">
           <div style={{ fontSize: '4rem', marginBottom: 20 }}>🎯</div>
           <h3 style={{ fontFamily: "'Outfit',sans-serif", fontSize: '1.8rem', fontWeight: 800, marginBottom: 14 }}>
             Ready to test your knowledge?
@@ -116,9 +136,9 @@ export default function QuizPanel({ onXP }: QuizPanelProps) {
       )}
 
       {phase === 'error' && (
-        <div className="glass" style={{ textAlign: 'center', padding: '40px' }}>
+        <div className="glass" style={{ textAlign: 'center', padding: '40px' }} role="alert">
           <div style={{ fontSize: '2.5rem', marginBottom: 16 }}>⚠️</div>
-          <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>Error loading question. Check your API connection.</p>
+          <p style={{ color: 'var(--text-muted)', marginBottom: 20 }}>{errorMsg}</p>
           <button className="btn-primary" onClick={loadQuiz}>Try Again</button>
         </div>
       )}
@@ -157,7 +177,8 @@ export default function QuizPanel({ onXP }: QuizPanelProps) {
                 return (
                   <button key={i} className={`option-btn ${extraClass}`}
                     onClick={() => selectAnswer(letter)}
-                    disabled={!!selected}>
+                    disabled={!!selected}
+                    aria-label={`Option ${letter}: ${text}`}>
                     <span className="option-letter">{letter}</span>
                     <span style={{ flex: 1 }}>{text}</span>
                     {selected && letter === question.correct && (

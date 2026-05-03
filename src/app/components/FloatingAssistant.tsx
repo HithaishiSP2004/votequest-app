@@ -27,9 +27,29 @@ export default function FloatingAssistant() {
   const endRef = useRef<HTMLDivElement>(null);
   const recogRef = useRef<any>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const messagesRef = useRef<Message[]>(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
   useEffect(() => { const timer = setTimeout(() => setPulse(false), 8000); return () => clearTimeout(timer); }, []);
+
+  const escapeHtml = useCallback((raw: string) => (
+    raw
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  ), []);
+
+  const formatSafeMsg = useCallback((raw: string) => (
+    escapeHtml(raw)
+      .replace(/\*\*(.*?)\*\*/g, '<strong style="color:#fff">$1</strong>')
+      .replace(/\n/g, '<br>')
+  ), [escapeHtml]);
 
   const sendMessage = useCallback(async (override?: string) => {
     const text = (override ?? input).trim();
@@ -42,7 +62,7 @@ export default function FloatingAssistant() {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: messages.slice(-8), mode: 'chat', stageContext: 'Indian Election Education' }),
+        body: JSON.stringify({ message: text, history: messagesRef.current.slice(-8), mode: 'chat', stageContext: 'Indian Election Education' }),
       });
       const data = await res.json();
       const reply = data.reply || data.text || '⚠️ No response.';
@@ -52,7 +72,7 @@ export default function FloatingAssistant() {
     } catch {
       setMessages(prev => [...prev, { role: 'model', content: '⚠️ Connection error. Please try again.' }]);
     } finally { setLoading(false); }
-  }, [input, loading, messages, autoRead, speak]);
+  }, [input, loading, autoRead, speak]);
 
   const startVoice = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -231,7 +251,7 @@ export default function FloatingAssistant() {
                       fontFamily:"'Inter',sans-serif",
                       wordBreak: 'break-word',
                     }}
-                      dangerouslySetInnerHTML={{ __html: m.content.replace(/\*\*(.*?)\*\*/g,'<strong style="color:#fff">$1</strong>').replace(/\n/g,'<br>') }}
+                      dangerouslySetInnerHTML={{ __html: formatSafeMsg(m.content) }}
                     />
                   </div>
                 ))}

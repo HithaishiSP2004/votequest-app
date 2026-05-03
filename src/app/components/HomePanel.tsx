@@ -1,5 +1,5 @@
 'use client';
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLang } from '../lib/LangContext';
 import { IconVote, IconShield, IconCalendar, IconUsers, IconArrowRight, IconLightning, IconTrendingUp, IconStar, IconTarget } from './Icons';
 
@@ -9,8 +9,34 @@ interface HomePanelProps {
   quizScore: number;
 }
 
+interface ElectionPhaseData {
+  phase: string;
+  emoji: string;
+  description: string;
+  nextStep: string;
+  upcomingElections: string[];
+  source: 'live' | 'fallback';
+}
+
 export default function HomePanel({ onNavigate, xp, quizScore }: HomePanelProps) {
   const { t } = useLang();
+  const [electionPhase, setElectionPhase] = useState<ElectionPhaseData | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    abortRef.current?.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+    fetch('/api/election-phase', { signal: controller.signal })
+      .then(res => res.json())
+      .then(data => setElectionPhase(data))
+      .catch(err => {
+        if (err?.name !== 'AbortError') {
+          console.error('Failed to fetch election phase:', err);
+        }
+      });
+    return () => controller.abort();
+  }, []);
 
   const topics = [
     { Icon: IconVote,       label: 'Voter Registration (EPIC)',  sub: 'How to register & get your Voter ID',  msg: 'How do I register to vote in India? What is EPIC and how do I apply for a Voter ID card?' },
@@ -31,6 +57,34 @@ export default function HomePanel({ onNavigate, xp, quizScore }: HomePanelProps)
             <span className="badge badge-saffron">🏆 Google PromptWars</span>
             <span className="badge badge-green-india">🇮🇳 Indian Election Education</span>
           </div>
+
+          {electionPhase && (
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 12,
+              padding: '10px 18px',
+              background: 'rgba(99,179,237,0.07)',
+              border: '1px solid rgba(99,179,237,0.2)',
+              borderRadius: 10,
+              marginBottom: 24,
+              flexWrap: 'wrap',
+            }}>
+              <span style={{ fontSize: '1.3rem' }}>{electionPhase.emoji}</span>
+              <div>
+                <span style={{ fontWeight: 700, fontSize: '0.85rem', color: 'var(--cyan)' }}>
+                  Current Phase: {electionPhase.phase}
+                </span>
+                <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 8 }}>
+                  {electionPhase.description}
+                </span>
+              </div>
+              {electionPhase.upcomingElections?.length > 0 && (
+                <div style={{ fontSize: '0.72rem', color: 'var(--text-dim)', marginLeft: 'auto' }}>
+                  📅 {electionPhase.upcomingElections[0]}
+                </div>
+              )}
+            </div>
+          )}
+
           <h1 style={{ fontFamily:"'Outfit',sans-serif", fontSize:'clamp(2.5rem,5vw,4.5rem)', fontWeight:900, lineHeight:1.05, letterSpacing:'-2px', marginBottom:20 }}>
             <span style={{ display:'block', color:'#FF9933' }}>{t('tagline1')}</span>
             <span style={{ display:'block', color:'#e8e8f0' }}>{t('tagline2')}</span>
@@ -40,13 +94,13 @@ export default function HomePanel({ onNavigate, xp, quizScore }: HomePanelProps)
             Master India's election process through an <strong style={{ color:'var(--text)' }}>interactive, AI-powered</strong> experience. From EPIC registration to government formation — understand every step of the world's largest democracy.
           </p>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-            <button className="btn-saffron" onClick={() => onNavigate('chat')} style={{ gap:8 }}>
+            <button className="btn-saffron" aria-label="Start learning with chat assistant" onClick={() => onNavigate('chat')} style={{ gap:8 }}>
               <IconArrowRight size={16} strokeWidth={2.5} /> {t('start_learning')}
             </button>
-            <button className="btn-secondary" onClick={() => onNavigate('journey')}>
+            <button className="btn-secondary" aria-label="Open election journey map" onClick={() => onNavigate('journey')}>
               🗺️ {t('see_journey')}
             </button>
-            <button className="btn-secondary" onClick={() => onNavigate('quiz')}>
+            <button className="btn-secondary" aria-label="Open quiz arena" onClick={() => onNavigate('quiz')}>
               🎯 {t('take_quiz')}
             </button>
           </div>
@@ -111,6 +165,7 @@ export default function HomePanel({ onNavigate, xp, quizScore }: HomePanelProps)
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:12 }}>
           {topics.map((topic, i) => (
             <button key={i} onClick={() => onNavigate('chat', topic.msg)}
+              aria-label={`Ask about ${topic.label}`}
               style={{ display:'flex', flexDirection:'column', alignItems:'flex-start', gap:6, padding:'18px 18px', background:'var(--surface)', border:'1px solid var(--border)', borderRadius:'var(--radius)', color:'var(--text)', cursor:'pointer', textAlign:'left', transition:'all 0.25s', fontFamily:"'Inter',sans-serif" }}
               onMouseEnter={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor=i%3===0 ? '#FF9933' : i%3===1 ? 'var(--primary)' : '#138808'; el.style.transform='translateY(-3px)'; el.style.boxShadow='0 8px 28px rgba(108,99,255,0.15)'; }}
               onMouseLeave={e => { const el = e.currentTarget as HTMLElement; el.style.borderColor='var(--border)'; el.style.transform=''; el.style.boxShadow=''; }}

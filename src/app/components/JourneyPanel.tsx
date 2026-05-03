@@ -62,6 +62,15 @@ function formatContent(t: string) {
     .replace(/\n/g, '<br>');
 }
 
+function escapeHtml(raw: string): string {
+  return raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 export default function JourneyPanel({ onXP }: JourneyPanelProps) {
   const [activeStep, setActiveStep] = useState<number | null>(1);
   const [completedSteps, setCompletedSteps] = useState<Set<number>>(new Set([1]));
@@ -145,8 +154,8 @@ export default function JourneyPanel({ onXP }: JourneyPanelProps) {
             const done = completedSteps.has(step.id);
             const active = activeStep === step.id;
             return (
-              <div key={step.id} onClick={() => handleStep(step.id)}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 12px 32px', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <button type="button" key={step.id} onClick={() => handleStep(step.id)} aria-label={`Open step ${step.id}: ${step.title}`}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 12px 32px', cursor: 'pointer', transition: 'all 0.2s', background: 'transparent', border: 'none', color: 'inherit' }}>
                 <div className={`step-node ${active ? 'active' : done ? 'done' : 'idle'}`} style={{ position: 'relative', marginBottom: 14 }}>
                   {done && !active ? '✓' : step.emoji}
                   <span style={{
@@ -160,7 +169,7 @@ export default function JourneyPanel({ onXP }: JourneyPanelProps) {
                 </div>
                 <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: '0.85rem', marginBottom: 4, color: active ? '#fff' : done ? 'var(--cyan)' : 'var(--text)' }}>{step.title}</div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{step.desc}</div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -176,8 +185,8 @@ export default function JourneyPanel({ onXP }: JourneyPanelProps) {
             const done = completedSteps.has(step.id);
             const active = activeStep === step.id;
             return (
-              <div key={step.id} onClick={() => handleStep(step.id)}
-                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 12px 32px', cursor: 'pointer', transition: 'all 0.2s' }}>
+              <button type="button" key={step.id} onClick={() => handleStep(step.id)} aria-label={`Open step ${step.id}: ${step.title}`}
+                style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', padding: '0 12px 32px', cursor: 'pointer', transition: 'all 0.2s', background: 'transparent', border: 'none', color: 'inherit' }}>
                 <div className={`step-node ${active ? 'active' : done ? 'done' : 'idle'}`} style={{ position: 'relative', marginBottom: 14 }}>
                   {done && !active ? '✓' : step.emoji}
                   <span style={{
@@ -191,7 +200,7 @@ export default function JourneyPanel({ onXP }: JourneyPanelProps) {
                 </div>
                 <div style={{ fontFamily: "'Outfit',sans-serif", fontWeight: 700, fontSize: '0.85rem', marginBottom: 4, color: active ? '#fff' : done ? 'var(--cyan)' : 'var(--text)' }}>{step.title}</div>
                 <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.4 }}>{step.desc}</div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -252,7 +261,7 @@ export default function JourneyPanel({ onXP }: JourneyPanelProps) {
         )}
         {journeyAnswer && !journeyLoading && (
           <div style={{ marginTop: 18, padding: '18px 20px', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius)', fontSize: '0.9rem', lineHeight: 1.7 }}
-            dangerouslySetInnerHTML={{ __html: formatContent(journeyAnswer) }}
+            dangerouslySetInnerHTML={{ __html: formatContent(escapeHtml(journeyAnswer)) }}
           />
         )}
       </div>

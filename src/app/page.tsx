@@ -12,10 +12,26 @@ import AdvisorPanel from './components/AdvisorPanel';
 import LanguageSelector from './components/LanguageSelector';
 import { IconHome, IconChat, IconMap, IconTarget, IconPin, IconBook, IconAward, IconShield } from './components/Icons';
 
+/** Valid navigation tab identifiers */
 type Tab = 'home' | 'chat' | 'journey' | 'quiz' | 'find' | 'resources' | 'advisor';
 
 interface ToastData { title: string; msg: string; }
 
+/** Maximum XP a user can accumulate in a session */
+const MAX_XP = 500;
+
+/** Navigation tabs — defined at module level to avoid re-creation on every render */
+const TABS: { id: Tab; labelKey: string }[] = [
+  { id: 'home',      labelKey: 'home' },
+  { id: 'chat',      labelKey: 'ask_guide' },
+  { id: 'journey',   labelKey: 'journey' },
+  { id: 'quiz',      labelKey: 'quiz_arena' },
+  { id: 'advisor',   labelKey: 'advisor' },
+  { id: 'find',      labelKey: 'find_polling' },
+  { id: 'resources', labelKey: 'resources' },
+];
+
+/** Tab icon map — defined at module level to avoid re-creation on every render */
 const TAB_ICONS: Record<Tab, React.ReactNode> = {
   home:      <IconHome size={16} strokeWidth={2} />,
   chat:      <IconChat size={16} strokeWidth={2} />,
@@ -34,18 +50,11 @@ export default function Home() {
   const [toast, setToast] = useState<ToastData | null>(null);
   const [toastVisible, setToastVisible] = useState(false);
   const [chatInitialMsg, setChatInitialMsg] = useState('');
-  const MAX_XP = 500;
 
-  const tabs: { id: Tab; labelKey: string }[] = [
-    { id: 'home',      labelKey: 'home' },
-    { id: 'chat',      labelKey: 'ask_guide' },
-    { id: 'journey',   labelKey: 'journey' },
-    { id: 'quiz',      labelKey: 'quiz_arena' },
-    { id: 'advisor',   labelKey: 'advisor' },
-    { id: 'find',      labelKey: 'find_polling' },
-    { id: 'resources', labelKey: 'resources' },
-  ];
-
+  /**
+   * Awards XP to the user and triggers a toast notification.
+   * Memoized — stable reference prevents child components re-rendering on XP state change.
+   */
   const addXP = useCallback((amount: number, reason: string) => {
     setXp(prev => Math.min(prev + amount, MAX_XP));
     if (reason.toLowerCase().includes('correct')) setQuizScore(s => s + 1);
@@ -62,10 +71,14 @@ export default function Home() {
     return () => clearTimeout(timer);
   }, [toast]);
 
-  const navigate = (tab: string, msg?: string) => {
-    setActiveTab(tab as Tab);
+  /**
+   * Navigates to a tab, optionally pre-loading a chat message.
+   * Memoized — stable reference prevents child panels re-rendering when parent XP state changes.
+   */
+  const navigate = useCallback((tab: Tab, msg?: string) => {
+    setActiveTab(tab);
     if (msg && tab === 'chat') setChatInitialMsg(msg);
-  };
+  }, []);
 
   const xpPct = Math.min((xp / MAX_XP) * 100, 100);
 
@@ -77,7 +90,7 @@ export default function Home() {
         <div style={{ maxWidth: 1280, margin: '0 auto', padding: '0 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16, height: 62 }}>
 
           {/* Logo */}
-          <button onClick={() => setActiveTab('home')} style={{ display: 'flex', alignItems: 'center', gap: 11, background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
+          <button aria-label="Go to home" onClick={() => setActiveTab('home')} style={{ display: 'flex', alignItems: 'center', gap: 11, background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
             <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg,#6c63ff,#00d4ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 18px rgba(108,99,255,0.45)', flexShrink: 0 }}>
               <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
@@ -107,18 +120,20 @@ export default function Home() {
       </header>
 
       {/* TAB BAR */}
-      <div className="tab-bar">
-        {tabs.map(tab => (
+      <nav className="tab-bar" aria-label="Primary navigation">
+        {TABS.map(tab => (
           <button key={tab.id}
             className={`tab-btn ${activeTab === tab.id ? 'active' : ''}`}
-            onClick={() => setActiveTab(tab.id)}>
+            onClick={() => setActiveTab(tab.id)}
+            aria-current={activeTab === tab.id ? 'page' : undefined}
+            aria-label={`Open ${t(tab.labelKey)} tab`}>
             <span style={{ display:'flex', alignItems:'center', justifyContent:'center' }}>
               {TAB_ICONS[tab.id]}
             </span>
             <span>{t(tab.labelKey)}</span>
           </button>
         ))}
-      </div>
+      </nav>
 
       {/* PANELS */}
       <main style={{ flex: 1 }}>

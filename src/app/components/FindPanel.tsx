@@ -16,13 +16,19 @@ export default function FindPanel({ onXP }: FindPanelProps) {
   const [constituency, setConstituency] = useState('');
   const [state, setState] = useState('');
   const [results, setResults] = useState<null | 'loading' | 'found' | 'notfound' | 'error'>(null);
+  const [formError, setFormError] = useState('');
 
   const findPolling = async () => {
-    if (!constituency || !state) { alert('Please enter your constituency/area and state.'); return; }
+    if (!constituency.trim() || !state.trim()) {
+      setFormError('Please enter your constituency/area and select your state.');
+      return;
+    }
+    setFormError('');
     setResults('loading');
     try {
       const addr = encodeURIComponent(`${constituency}, ${state}`);
       const res = await fetch(`/api/polling-place?address=${addr}`);
+      if (!res.ok) throw new Error(`Polling lookup failed (${res.status})`);
       const data = await res.json();
       if (data.locations && data.locations.length > 0) {
         setResults('found');
@@ -77,6 +83,11 @@ export default function FindPanel({ onXP }: FindPanelProps) {
           <button className="btn-primary" onClick={findPolling} style={{ marginBottom: 14, width: '100%', justifyContent: 'center' }}>
             Find Polling Booth →
           </button>
+          {formError && (
+            <p role="alert" style={{ marginTop: -6, marginBottom: 10, color: 'var(--red,#ff4757)', fontSize: '0.8rem' }}>
+              {formError}
+            </p>
+          )}
           <a href="https://voters.eci.gov.in" target="_blank" rel="noopener noreferrer"
             style={{ display: 'block', textAlign: 'center', color: 'var(--primary)', fontFamily: "'DM Mono',monospace", fontSize: '0.75rem', textDecoration: 'none', letterSpacing: '0.04em' }}>
             Also check voters.eci.gov.in ↗

@@ -2,10 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
-  const address = searchParams.get('address');
+  const address = (searchParams.get('address') || '').trim();
 
   if (!address) {
     return NextResponse.json({ error: 'Address is required' }, { status: 400 });
+  }
+  if (address.length > 200) {
+    return NextResponse.json({ error: 'Address is too long' }, { status: 400 });
   }
 
   // The ECI Voter Portal does not expose a public REST API for booth lookup.
@@ -35,7 +38,8 @@ export async function GET(req: NextRequest) {
         }
       ]
     });
-  } catch (error: any) {
-    return NextResponse.json({ locations: [], error: error.message }, { status: 200 });
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Unknown error';
+    return NextResponse.json({ locations: [], error: message }, { status: 200 });
   }
 }

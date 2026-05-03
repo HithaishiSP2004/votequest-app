@@ -2,11 +2,22 @@ import { NextRequest, NextResponse } from 'next/server';
 
 // Google Cloud Translation API integration
 export async function POST(request: NextRequest) {
+  let fallbackText = '';
   try {
     const { text, targetLanguage } = await request.json();
+    const normalizedText = typeof text === 'string' ? text.trim() : '';
+    const normalizedTarget = typeof targetLanguage === 'string' ? targetLanguage.trim().toLowerCase() : '';
+    fallbackText = normalizedText || (typeof text === 'string' ? text : '');
 
-    if (!text || !targetLanguage || targetLanguage === 'en') {
-      return NextResponse.json({ translatedText: text });
+    if (!normalizedText || !normalizedTarget || normalizedTarget === 'en') {
+      return NextResponse.json({ translatedText: normalizedText || text || '' });
+    }
+
+    if (normalizedText.length > 5000) {
+      return NextResponse.json(
+        { translatedText: normalizedText, error: 'Text exceeds translation limit (5000 chars)' },
+        { status: 400 }
+      );
     }
 
     const apiKey = process.env.GOOGLE_TRANSLATE_API_KEY;
@@ -25,8 +36,8 @@ export async function POST(request: NextRequest) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        q: text,
-        target: targetLanguage,
+        q: normalizedText,
+        target: normalizedTarget,
         source: 'en',
         format: 'text',
       }),
@@ -43,6 +54,6 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Translation error:', error);
     // Always return something — never break the UI
-    return NextResponse.json({ translatedText: '', error: 'Translation failed, showing original' });
+    return NextResponse.json({ translatedText: fallbackText, error: 'Translation failed, showing original' }, { status: 200 });
   }
 }

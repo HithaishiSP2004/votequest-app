@@ -1,10 +1,28 @@
 'use client';
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useLang } from '../lib/LangContext';
 import { IconBot, IconSend, IconMic, IconMicOff, IconVolume, IconVolumeOff, IconVote, IconCalendar, IconShield, IconUsers, IconMap, IconTarget } from './Icons';
 import LanguageSelector from './LanguageSelector';
 
-interface Message { role: 'user' | 'model'; content: string; }
+interface Reasoning {
+  query_understood: string;
+  answer_source: string;
+  confidence: string;
+}
+interface ElectionPhase {
+  phase: string;
+  emoji: string;
+  description: string;
+  nextStep: string;
+}
+interface SmartAction { label: string; msg: string; }
+interface Message {
+  role: 'user' | 'model';
+  content: string;
+  reasoning?: Reasoning;
+  electionPhase?: ElectionPhase;
+  smartActions?: SmartAction[];
+}
 
 const quickTopics = [
   { Icon: IconVote,    label: 'Voter Registration (Form 6)', msg: 'How do I register to vote using Form 6?' },
@@ -15,11 +33,47 @@ const quickTopics = [
   { Icon: IconUsers,   label: 'cVIGIL App',                  msg: 'What is the cVIGIL app and how do I use it to report election violations?' },
 ];
 
-function formatMsg(t: string) {
-  return t.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\*(.*?)\*/g, '<em>$1</em>').replace(/\n\n/g, '<br><br>').replace(/\n/g, '<br>');
+// Pre-compiled regex patterns — defined at module level to avoid re-creation on every message render
+const RE_BOLD = /\*\*(.*?)\*\*/g;
+const RE_ITALIC = /\*(.*?)\*/g;
+const RE_DOUBLE_NL = /\n\n/g;
+const RE_SINGLE_NL = /\n/g;
+
+/**
+ * Converts simple markdown (bold, italic, newlines) to safe inline HTML.
+ * Uses pre-compiled regex patterns for efficiency.
+ */
+function formatMsg(text: string): string {
+  return text
+    .replace(RE_BOLD, '<strong>$1</strong>')
+    .replace(RE_ITALIC, '<em>$1</em>')
+    .replace(RE_DOUBLE_NL, '<br><br>')
+    .replace(RE_SINGLE_NL, '<br>');
 }
 
-declare global { interface Window { SpeechRecognition: any; webkitSpeechRecognition: any; } }
+/** Strongly-typed SpeechRecognition interface for cross-browser compatibility */
+interface ISpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onresult: ((e: SpeechRecognitionEvent) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
+/** SpeechRecognition result event with typed results list */
+interface SpeechRecognitionEvent extends Event {
+  results: SpeechRecognitionResultList;
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition: new () => ISpeechRecognition;
+    webkitSpeechRecognition: new () => ISpeechRecognition;
+  }
+}
 
 interface ChatPanelProps {
   initialMsg?: string;
@@ -28,7 +82,7 @@ interface ChatPanelProps {
 }
 
 export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPanelProps) {
-  const { t, speak, stopSpeaking, isSpeaking, speechLang } = useLang();
+  const { t, speak, stopSpeaking, isSpeaking, speechLang, lang } = useLang();
   const [messages, setMessages] = useState<Message[]>([{
     role: 'model',
     content: "👋 Welcome to **VoteQuest**! I'm your AI election education guide.\n\nI can help you understand **voter registration**, **election timelines**, **how votes are counted**, and much more.\n\nWhat would you like to learn today? 🗳️",
@@ -38,12 +92,20 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
   const [mode, setMode] = useState<'chat' | 'journey'>('chat');
   const [isListening, setIsListening] = useState(false);
   const [autoRead, setAutoRead] = useState(false);
-  const [selectedLang, setSelectedLang] = useState('en');
   const endRef = useRef<HTMLDivElement>(null);
-  const recogRef = useRef<any>(null);
+  const recogRef = useRef<ISpeechRecognition | null>(null);
+  const messagesRef = useRef<Message[]>(messages);
+
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  const stripMarkup = useCallback((text: string) => (
+    text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/<[^>]+>/g, '')
+  ), []);
 
   // Google Cloud Translation API — translate AI responses to selected Indian language
-  const translateText = async (text: string, targetLang: string): Promise<string> => {
+  const translateText = useCallback(async (text: string, targetLang: string): Promise<string> => {
     if (targetLang === 'en') return text;
     try {
       const res = await fetch('/api/translate', {
@@ -56,7 +118,21 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
     } catch {
       return text; // fallback to English silently
     }
-  };
+  }, []); // stable — no external deps needed
+
+  const escapeHtml = useCallback((raw: string): string => (
+    raw
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;')
+  ), []);
+
+  const formatSafeMsg = useCallback((text: string): string => {
+    const escaped = escapeHtml(text);
+    return formatMsg(escaped);
+  }, [escapeHtml]);
 
   useEffect(() => { endRef.current?.scrollIntoView({ behavior: 'smooth' }); }, [messages, loading]);
 
@@ -65,7 +141,7 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialMsg]);
 
-  const sendMessage = async (override?: string) => {
+  const sendMessage = useCallback(async (override?: string) => {
     const text = (override ?? input).trim();
     if (!text || loading) return;
     setInput('');
@@ -74,19 +150,25 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
     try {
       const res = await fetch('/api/chat', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text, history: messages.slice(-10), mode, stageContext: 'General Election Education' }),
+        body: JSON.stringify({ message: text, history: messagesRef.current.slice(-10), mode, stageContext: 'General Election Education' }),
       });
       const data = await res.json();
       const rawReply = data.reply || data.text || '⚠️ No response received.';
       // Translate reply via Google Cloud Translation API if language is selected
-      const reply = await translateText(rawReply, selectedLang);
-      setMessages(prev => [...prev, { role: 'model', content: reply }]);
-      if (autoRead) speak(reply.replace(/\*\*/g, '').replace(/\*/g, '').replace(/<[^>]+>/g, ''));
+      const reply = await translateText(rawReply, lang);
+      setMessages(prev => [...prev, {
+        role: 'model',
+        content: reply,
+        reasoning: data.reasoning,
+        electionPhase: data.electionPhase,
+        smartActions: data.smartActions,
+      }]);
+      if (autoRead) speak(stripMarkup(reply));
       onXP(10, 'Question answered!');
     } catch {
       setMessages(prev => [...prev, { role: 'model', content: '⚠️ Connection error. Please try again.' }]);
     } finally { setLoading(false); }
-  };
+  }, [input, loading, mode, lang, autoRead, speak, onXP, translateText, stripMarkup]);
 
   const startVoice = () => {
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -94,7 +176,7 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
     const rec = new SR(); recogRef.current = rec;
     rec.lang = speechLang; rec.interimResults = false;
     rec.onstart = () => setIsListening(true);
-    rec.onresult = (e: any) => { const tr = e.results[0][0].transcript; setInput(tr); setTimeout(() => sendMessage(tr), 300); };
+    rec.onresult = (e: SpeechRecognitionEvent) => { const tr = e.results[0][0].transcript; setInput(tr); setTimeout(() => sendMessage(tr), 300); };
     rec.onerror = () => setIsListening(false);
     rec.onend = () => setIsListening(false);
     rec.start();
@@ -104,7 +186,7 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
   const readLast = () => {
     if (isSpeaking) { stopSpeaking(); return; }
     const last = [...messages].reverse().find(m => m.role === 'model');
-    if (last) speak(last.content.replace(/\*\*/g,'').replace(/\*/g,'').replace(/<[^>]+>/g,''));
+    if (last) speak(stripMarkup(last.content));
   };
 
   return (
@@ -170,7 +252,7 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
           </div>
 
           {/* Messages */}
-          <div className="glass" style={{ minHeight:440, maxHeight:500, overflowY:'auto', padding:'20px 18px', display:'flex', flexDirection:'column', gap:14 }}>
+          <div className="glass" aria-live="polite" aria-label="Chat messages" style={{ minHeight:440, maxHeight:500, overflowY:'auto', padding:'20px 18px', display:'flex', flexDirection:'column', gap:14 }}>
             {messages.map((m, i) => (
               <div key={i} style={{ alignSelf: m.role==='user'?'flex-end':'flex-start', maxWidth:'82%' }}>
                 {m.role === 'model' && (
@@ -179,7 +261,74 @@ export default function ChatPanel({ initialMsg, onClearInitial, onXP }: ChatPane
                   </div>
                 )}
                 <div className={m.role==='user'?'bubble-user':'bubble-bot'} style={{ fontSize:'0.88rem', lineHeight:1.65 }}
-                  dangerouslySetInnerHTML={{ __html: formatMsg(m.content) }} />
+                  dangerouslySetInnerHTML={{ __html: formatSafeMsg(m.content) }} />
+
+                {/* ── Reasoning block (collapsible) ── */}
+                {m.role === 'model' && m.reasoning && (
+                  <details style={{ marginTop:6 }}>
+                    <summary style={{
+                      fontSize:'0.72rem', color:'var(--text-muted)', cursor:'pointer',
+                      fontFamily:"'DM Mono',monospace", listStyle:'none', userSelect:'none',
+                      display:'inline-flex', alignItems:'center', gap:4,
+                    }}>
+                      💡 Why this answer?
+                    </summary>
+                    <div style={{
+                      marginTop:6, padding:'8px 12px',
+                      borderLeft:'3px solid var(--cyan)',
+                      background:'rgba(0,212,255,0.05)',
+                      borderRadius:'0 6px 6px 0',
+                      fontSize:'0.72rem', color:'var(--text-muted)',
+                      fontFamily:"'DM Mono',monospace", lineHeight:1.6,
+                    }}>
+                      <div>• {m.reasoning.query_understood}</div>
+                      <div>• Source: {m.reasoning.answer_source}</div>
+                      <div>• Confidence: {m.reasoning.confidence}</div>
+                    </div>
+                  </details>
+                )}
+
+                {/* ── Election Phase pill ── */}
+                {m.role === 'model' && m.electionPhase && (
+                  <div style={{
+                    marginTop:7, padding:'4px 10px',
+                    borderRadius:6,
+                    background:'rgba(99,179,237,0.08)',
+                    border:'1px solid rgba(99,179,237,0.2)',
+                    fontSize:'0.68rem', color:'var(--text-muted)',
+                    fontFamily:"'Inter',sans-serif", lineHeight:1.5,
+                  }}>
+                    {m.electionPhase.emoji} <strong>Current Phase:</strong> {m.electionPhase.phase} — {m.electionPhase.nextStep}
+                  </div>
+                )}
+
+                {/* ── Smart Action chips ── */}
+                {m.role === 'model' && m.smartActions && m.smartActions.length > 0 && (
+                  <div style={{ marginTop:8 }}>
+                    <div style={{ fontSize:'0.65rem', color:'var(--text-dim)', fontFamily:"'DM Mono',monospace", marginBottom:5 }}>
+                      💡 Quick Actions:
+                    </div>
+                    <div style={{ display:'flex', flexWrap:'wrap', gap:6 }}>
+                      {m.smartActions.map((action, ai) => (
+                        <button key={ai} onClick={() => sendMessage(action.msg)} style={{
+                          fontSize:'0.72rem', padding:'4px 12px',
+                          borderRadius:20,
+                          border:'1px solid var(--border)',
+                          background:'var(--surface)',
+                          color:'var(--text)',
+                          cursor:'pointer',
+                          fontFamily:"'Inter',sans-serif",
+                          transition:'border-color 0.2s, color 0.2s',
+                        }}
+                          onMouseEnter={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--primary)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--primary)'; }}
+                          onMouseLeave={e => { (e.currentTarget as HTMLButtonElement).style.borderColor = 'var(--border)'; (e.currentTarget as HTMLButtonElement).style.color = 'var(--text)'; }}
+                        >
+                          {action.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
             {loading && (

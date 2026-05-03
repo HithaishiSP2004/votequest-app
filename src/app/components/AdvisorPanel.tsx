@@ -1,5 +1,5 @@
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { IconCheck, IconArrowRight, IconInfo, IconExternalLink, IconShield } from './Icons';
 
 // ── Deterministic advisor logic ───────────────────────────────────────────────
@@ -156,15 +156,20 @@ export default function AdvisorPanel() {
   const [age, setAge] = useState('');
   const [isFirstTime, setIsFirstTime] = useState(true);
   const [isRegistered, setIsRegistered] = useState(false);
-  const [result, setResult] = useState<AdvisorResult | null>(null);
   const [activeStep, setActiveStep] = useState(0);
   const [submitted, setSubmitted] = useState(false);
+  const parsedAge = Number.parseInt(age, 10);
+  const isAgeValid = Number.isInteger(parsedAge) && parsedAge >= 1 && parsedAge <= 120;
+
+  // Memoized advisor result — only recomputed when inputs change
+  const advisorResult = useMemo<AdvisorResult | null>(() => {
+    if (!age || !isAgeValid) return null;
+    if (!submitted) return null;
+    return computeAdvisorResult(parsedAge, isFirstTime, isRegistered);
+  }, [age, parsedAge, isAgeValid, isFirstTime, isRegistered, submitted]);
 
   const handleCheck = () => {
-    const parsedAge = parseInt(age, 10);
-    if (!age || isNaN(parsedAge) || parsedAge < 1 || parsedAge > 120) return;
-    const r = computeAdvisorResult(parsedAge, isFirstTime, isRegistered);
-    setResult(r);
+    if (!age || !isAgeValid) return;
     setActiveStep(0);
     setSubmitted(true);
   };
@@ -173,12 +178,11 @@ export default function AdvisorPanel() {
     setAge('');
     setIsFirstTime(true);
     setIsRegistered(false);
-    setResult(null);
     setSubmitted(false);
     setActiveStep(0);
   };
 
-  const isAgeValid = age !== '' && !isNaN(parseInt(age, 10)) && parseInt(age, 10) >= 1 && parseInt(age, 10) <= 120;
+  const result = advisorResult;
 
   return (
     <div style={{ maxWidth: 760, margin: '0 auto', padding: '32px 24px 60px' }}>
@@ -210,7 +214,7 @@ export default function AdvisorPanel() {
 
             {/* Age */}
             <div>
-              <label style={{ display: 'block', fontFamily: "'DM Mono',monospace", fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
+              <label htmlFor="advisor-age" style={{ display: 'block', fontFamily: "'DM Mono',monospace", fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
                 Your Age
               </label>
               <input
@@ -221,6 +225,8 @@ export default function AdvisorPanel() {
                 value={age}
                 onChange={e => setAge(e.target.value)}
                 placeholder="e.g. 19"
+                aria-invalid={age !== '' && !isAgeValid}
+                aria-describedby="advisor-age-help"
                 style={{
                   width: '100%', boxSizing: 'border-box',
                   background: 'rgba(255,255,255,0.04)', border: '1px solid var(--border)',
@@ -232,6 +238,9 @@ export default function AdvisorPanel() {
                 onBlur={e => e.target.style.borderColor = 'var(--border)'}
                 onKeyDown={e => e.key === 'Enter' && isAgeValid && handleCheck()}
               />
+              <div id="advisor-age-help" style={{ marginTop: 8, fontSize: '0.72rem', color: 'var(--text-dim)' }}>
+                Enter an age between 1 and 120.
+              </div>
             </div>
 
             {/* First-time voter toggle */}
@@ -239,11 +248,13 @@ export default function AdvisorPanel() {
               <label style={{ display: 'block', fontFamily: "'DM Mono',monospace", fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
                 Are you a first-time voter?
               </label>
-              <div style={{ display: 'flex', gap: 10 }}>
+              <div style={{ display: 'flex', gap: 10 }} role="radiogroup" aria-label="First-time voter">
                 {[{ val: true, label: 'Yes, first time' }, { val: false, label: 'No, I have voted before' }].map(opt => (
                   <button
                     key={String(opt.val)}
                     id={`first-time-${opt.val}`}
+                    role="radio"
+                    aria-checked={isFirstTime === opt.val}
                     onClick={() => { setIsFirstTime(opt.val); if (!opt.val) setIsRegistered(true); }}
                     style={{
                       flex: 1, padding: '13px 10px',
@@ -266,11 +277,13 @@ export default function AdvisorPanel() {
                 <label style={{ display: 'block', fontFamily: "'DM Mono',monospace", fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.08em', textTransform: 'uppercase', marginBottom: 10 }}>
                   Are you already registered on the Electoral Roll?
                 </label>
-                <div style={{ display: 'flex', gap: 10 }}>
+                <div style={{ display: 'flex', gap: 10 }} role="radiogroup" aria-label="Registration status">
                   {[{ val: false, label: 'Not yet registered' }, { val: true, label: 'Yes, I am registered' }].map(opt => (
                     <button
                       key={String(opt.val)}
                       id={`registered-${opt.val}`}
+                      role="radio"
+                      aria-checked={isRegistered === opt.val}
                       onClick={() => setIsRegistered(opt.val)}
                       style={{
                         flex: 1, padding: '13px 10px',

@@ -1,4 +1,8 @@
 /**
+ * @fileoverview Static knowledge base for VoteQuest.
+ * Serves pre-verified answers for common Indian election FAQs.
+ * Eliminates API calls for known topics — zero latency, zero cost.
+ *
  * knowledgeBase.ts
  * Structured, deterministic FAQ answers for common Indian election queries.
  * Priority 1 in the knowledge handling strategy — served before any AI call.
@@ -114,16 +118,35 @@ export const KNOWLEDGE_BASE: KBEntry[] = [
   },
 ];
 
+// Cache for repeated KB lookups — avoids full scan on identical queries
+const kbCache = new Map<string, string | null>();
+const MAX_KB_CACHE = 30;
+
 /**
- * Search the knowledge base for a matching answer.
- * Returns the answer string if found, null otherwise.
+ * Searches the knowledge base for an answer matching the user query.
+ * Uses keyword intersection to find the first matching entry.
+ * Results are cached (up to 30 entries) for zero-latency repeated lookups.
+ * @param query - User's question or search phrase
+ * @returns Pre-written answer string if found, null if no match (triggers AI fallback)
  */
 export function searchKnowledgeBase(query: string): string | null {
   const q = query.toLowerCase().trim();
+
+  // Return cached result if available
+  if (kbCache.has(q)) return kbCache.get(q)!;
+
+  let result: string | null = null;
   for (const entry of KNOWLEDGE_BASE) {
     if (entry.keywords.some(kw => q.includes(kw))) {
-      return entry.answer;
+      result = entry.answer;
+      break;
     }
   }
-  return null;
+
+  // Evict oldest entry if cache is full (FIFO eviction)
+  if (kbCache.size >= MAX_KB_CACHE) {
+    kbCache.delete(kbCache.keys().next().value as string);
+  }
+  kbCache.set(q, result);
+  return result;
 }

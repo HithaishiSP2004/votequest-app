@@ -1,10 +1,15 @@
 /**
+ * @fileoverview Intent detection engine for VoteQuest.
+ * Routes user queries deterministically without AI where possible.
+ * Reduces API calls and improves response latency.
+ *
  * intentEngine.ts
  * Fast, deterministic keyword-based intent classifier.
  * Controls the decision engine — routes queries without AI where possible.
  * Blueprint: "User Input → Intent Detection → Decision Engine → Response Type"
  */
 
+/** Represents a classified user intent category */
 export type Intent =
   | 'GUIDED_FLOW'   // Registration, booth, EPIC, Form 6 — serve from KB
   | 'RESULTS_INFO'  // Election results, dates, schedules — serve from KB + Google Search
@@ -12,10 +17,15 @@ export type Intent =
   | 'LEARNING'      // Civic education, constitution, concepts — serve from KB
   | 'GENERAL';      // Complex / unknown — call Gemini AI
 
+/** A rule mapping an intent to its trigger keywords */
 interface IntentRule {
   intent: Intent;
   keywords: string[];
 }
+
+// Simple in-memory LRU-style cache for repeated queries (avoids re-scanning rules)
+const intentCache = new Map<string, Intent>();
+const MAX_CACHE_SIZE = 20;
 
 const INTENT_RULES: IntentRule[] = [
   {
@@ -62,22 +72,39 @@ const INTENT_RULES: IntentRule[] = [
 ];
 
 /**
- * Detect the intent of a user query.
- * Returns the first matching intent or GENERAL as fallback.
+ * Detects the intent of a user query using keyword matching.
+ * Runs in O(n*m) where n=rules, m=keywords — typically <1ms.
+ * Results are cached (up to 20 entries) to skip re-scanning for repeated queries.
+ * @param query - Raw user input string
+ * @returns The classified Intent, defaults to 'GENERAL' if no match
  */
 export function detectIntent(query: string): Intent {
   const q = query.toLowerCase().trim();
+
+  // Return cached result if available
+  if (intentCache.has(q)) return intentCache.get(q)!;
+
+  let result: Intent = 'GENERAL';
   for (const rule of INTENT_RULES) {
     if (rule.keywords.some(kw => q.includes(kw))) {
-      return rule.intent;
+      result = rule.intent;
+      break;
     }
   }
-  return 'GENERAL';
+
+  // Evict oldest entry if cache is full (FIFO eviction)
+  if (intentCache.size >= MAX_CACHE_SIZE) {
+    intentCache.delete(intentCache.keys().next().value as string);
+  }
+  intentCache.set(q, result);
+  return result;
 }
 
 /**
- * Validate user input for safety.
- * Returns { valid: true } or { valid: false, reason: string }
+ * Validates user input for safety, length, and prompt injection patterns.
+ * Acts as a first-line defense before any AI processing.
+ * @param input - Raw user input
+ * @returns Validation result with optional failure reason
  */
 export function validateInput(input: string): { valid: boolean; reason?: string } {
   if (!input || input.trim().length === 0) {

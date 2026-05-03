@@ -4,8 +4,10 @@ import { useState } from 'react';
 
 export default function PollingBoothMap() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeQuery, setActiveQuery] = useState('');
   const [mapEmbedUrl, setMapEmbedUrl] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isFallback, setIsFallback] = useState<boolean | null>(null);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -13,8 +15,10 @@ export default function PollingBoothMap() {
     try {
       const res = await fetch('/api/maps?location=' + encodeURIComponent(searchQuery));
       const data = await res.json();
-      console.log('Setting embed URL:', data.embedUrl);
+      console.log('Setting embed URL:', data.embedUrl, '| fallback:', data.fallback);
       setMapEmbedUrl(data.embedUrl);
+      setIsFallback(data.fallback ?? null);
+      setActiveQuery(searchQuery);
     } catch (err) {
       console.error('Map search failed:', err);
     } finally {
@@ -60,9 +64,27 @@ export default function PollingBoothMap() {
       {mapEmbedUrl && (
         <div style={{
           fontSize: '0.74rem', color: 'var(--cyan)',
-          fontFamily: "'DM Mono',monospace", marginBottom: 8,
+          fontFamily: "'DM Mono',monospace", marginBottom: 6,
         }}>
-          📍 polling booth {searchQuery} India
+          📍 polling booth {activeQuery} India
+        </div>
+      )}
+
+      {/* Geocode status notice */}
+      {mapEmbedUrl && isFallback !== null && (
+        <div style={{
+          fontSize: '0.75rem',
+          fontFamily: "'Outfit',sans-serif",
+          marginBottom: 10,
+          padding: '6px 10px',
+          borderRadius: '6px',
+          background: isFallback ? 'rgba(234,179,8,0.12)' : 'rgba(34,197,94,0.12)',
+          border: `1px solid ${isFallback ? 'rgba(234,179,8,0.4)' : 'rgba(34,197,94,0.4)'}`,
+          color: isFallback ? '#ca8a04' : '#16a34a',
+        }}>
+          {isFallback
+            ? '⚠️ Exact location not found on map. Showing India view. Try the ECI portal for precise booth location.'
+            : `✅ Showing results near ${activeQuery}, India`}
         </div>
       )}
 

@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
@@ -66,11 +66,33 @@ const FALLBACK_QUESTIONS = [
   },
 ];
 
-export async function GET(req: NextRequest) {
+type QuizQuestion = {
+  question: string;
+  options: string[];
+  correct: string;
+  explanation: string;
+};
+
+function isValidQuestion(data: unknown): data is QuizQuestion {
+  if (!data || typeof data !== 'object') return false;
+  const q = data as QuizQuestion;
+  return (
+    typeof q.question === 'string' &&
+    Array.isArray(q.options) &&
+    q.options.length === 4 &&
+    q.options.every(opt => typeof opt === 'string' && /^[A-D]\)\s/.test(opt)) &&
+    typeof q.correct === 'string' &&
+    ['A', 'B', 'C', 'D'].includes(q.correct) &&
+    typeof q.explanation === 'string'
+  );
+}
+
+const pickFallback = () => FALLBACK_QUESTIONS[Math.floor(Math.random() * FALLBACK_QUESTIONS.length)];
+
+export async function GET() {
   try {
     if (!process.env.GEMINI_API_KEY) {
-      const q = FALLBACK_QUESTIONS[Math.floor(Math.random() * FALLBACK_QUESTIONS.length)];
-      return NextResponse.json(q);
+      return NextResponse.json(pickFallback());
     }
 
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
@@ -106,22 +128,42 @@ Return ONLY valid JSON in this exact format (no markdown, no extra text):
 
 Make the question educational, factually accurate about Indian elections and democracy, and appropriate for adult learners. Focus specifically on India's electoral system. Keep in mind the current year is ${new Date().getFullYear()}.`;
 
-    const result = await model.generateContent(prompt);
+    // Add retry logic for intermittent network "fetch failed" errors
+    let result;
+    let retries = 2;
+    while (retries > 0) {
+      try {
+        result = await Promise.race([
+          model.generateContent(prompt),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Gemini request timeout after 10s')), 10000)
+          ),
+        ]);
+        break; // Success, exit retry loop
+      } catch (err: any) {
+        retries--;
+        if (retries === 0) throw err; // Out of retries
+        console.warn(`[Quiz API] Gemini fetch failed, retrying... (${retries} attempts left)`);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1s before retry
+      }
+    }
+
+    if (!result) throw new Error('Failed to generate content after retries');
+
     const raw = result.response.text().trim();
 
     const jsonMatch = raw.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('No JSON found in response');
 
-    const parsed = JSON.parse(jsonMatch[0]);
+    const parsed = JSON.parse(jsonMatch[0]) as unknown;
 
-    if (!parsed.question || !parsed.options || !parsed.correct || !parsed.explanation) {
+    if (!isValidQuestion(parsed)) {
       throw new Error('Invalid question format');
     }
 
     return NextResponse.json(parsed);
   } catch (error: any) {
     console.error('Quiz API error:', error);
-    const q = FALLBACK_QUESTIONS[Math.floor(Math.random() * FALLBACK_QUESTIONS.length)];
-    return NextResponse.json(q);
+    return NextResponse.json(pickFallback());
   }
 }
