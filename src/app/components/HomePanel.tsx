@@ -20,6 +20,12 @@ interface ElectionPhaseData {
   source: 'live' | 'fallback';
 }
 
+/**
+ * HomePanel — Landing page for VoteQuest.
+ * Displays the election phase banner (fetched from /api/election-phase),
+ * hero messaging, feature cards, and quick-start CTAs.
+ * Election phase is fetched once on mount with a 6-hour server-side cache.
+ */
 export default function HomePanel({ onNavigate, xp, quizScore }: HomePanelProps) {
   const { t } = useLang();
   const [electionPhase, setElectionPhase] = useState<ElectionPhaseData | null>(null);

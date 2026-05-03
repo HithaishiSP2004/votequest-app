@@ -1,5 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 
+/** ISO 639-1 codes supported by VoteQuest — all major Indian languages + English */
+const SUPPORTED_LANG_CODES = new Set([
+  'en', 'hi', 'ta', 'te', 'bn', 'mr', 'kn', 'gu', 'ml', 'pa', 'or', 'as', 'ur'
+]);
+
 // Google Cloud Translation API integration
 export async function POST(request: NextRequest) {
   let fallbackText = '';
@@ -11,6 +16,14 @@ export async function POST(request: NextRequest) {
 
     if (!normalizedText || !normalizedTarget || normalizedTarget === 'en') {
       return NextResponse.json({ translatedText: normalizedText || text || '' });
+    }
+
+    // Reject unsupported language codes — prevents API abuse
+    if (!SUPPORTED_LANG_CODES.has(normalizedTarget)) {
+      return NextResponse.json(
+        { translatedText: normalizedText, error: 'Unsupported language code' },
+        { status: 400 }
+      );
     }
 
     if (normalizedText.length > 5000) {

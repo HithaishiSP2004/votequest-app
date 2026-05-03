@@ -5,10 +5,21 @@ import { IconBot, IconX, IconSend, IconMic, IconMicOff, IconVolume, IconVolumeOf
 
 interface Message { role: 'user' | 'model'; content: string; }
 
+interface ISpeechRecognition extends EventTarget {
+  lang: string;
+  interimResults: boolean;
+  onstart: (() => void) | null;
+  onresult: ((e: { results: { [key: number]: { [key: number]: { transcript: string } } } }) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start(): void;
+  stop(): void;
+}
+
 declare global {
   interface Window {
-    SpeechRecognition: any;
-    webkitSpeechRecognition: any;
+    SpeechRecognition: (new () => ISpeechRecognition) | undefined;
+    webkitSpeechRecognition: (new () => ISpeechRecognition) | undefined;
   }
 }
 
@@ -25,7 +36,7 @@ export default function FloatingAssistant() {
   const [autoRead, setAutoRead] = useState(false);
   const [pulse, setPulse] = useState(true);
   const endRef = useRef<HTMLDivElement>(null);
-  const recogRef = useRef<any>(null);
+  const recogRef = useRef<ISpeechRecognition | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const messagesRef = useRef<Message[]>(messages);
 
@@ -83,7 +94,7 @@ export default function FloatingAssistant() {
     rec.lang = speechLang;
     rec.interimResults = false;
     rec.onstart = () => setIsListening(true);
-    rec.onresult = (e: any) => {
+    rec.onresult = (e) => {
       const transcript = e.results[0][0].transcript;
       setInput(transcript);
       setTimeout(() => sendMessage(transcript), 300);

@@ -17,7 +17,7 @@ type AdvisorResult = {
   steps: AdvisorStep[];
 };
 
-function computeAdvisorResult(
+export function computeAdvisorResult(
   age: number,
   isFirstTime: boolean,
   isRegistered: boolean
@@ -152,6 +152,12 @@ function computeAdvisorResult(
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
+/**
+ * AdvisorPanel — Deterministic voter eligibility advisor.
+ * Computes personalised step-by-step guidance based on age,
+ * first-time status, and registration state. Zero AI calls —
+ * all logic is local for instant, reliable responses.
+ */
 export default function AdvisorPanel() {
   const [age, setAge] = useState('');
   const [isFirstTime, setIsFirstTime] = useState(true);

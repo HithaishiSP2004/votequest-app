@@ -107,6 +107,12 @@ export async function POST(req: NextRequest) {
     }
     const { messages, message, history, stageContext, mode } = body;
 
+    // Sanitize optional params — prevent prompt injection via stageContext/mode
+    const safeStageContext = typeof stageContext === 'string'
+      ? stageContext.replace(/[<>"'`]/g, '').slice(0, 100)
+      : 'General Election Education';
+    const safeMode = mode === 'journey' ? 'journey' : 'chat';
+
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json({ error: 'Gemini API key is not configured.' }, { status: 500 });
     }
@@ -127,7 +133,7 @@ export async function POST(req: NextRequest) {
       // Current format from ChatPanel / FloatingAssistant
       rawHistory = (Array.isArray(history) ? history : []).slice(-12).map((m: { role: string; content: string }) => ({
         role: m.role === 'user' ? 'user' : 'model',
-        parts: [{ text: m.content }],
+        parts: [{ text: typeof m.content === 'string' ? m.content.slice(0, 2000) : '' }],
       }));
       lastMessage = message || '';
     }
@@ -177,8 +183,8 @@ export async function POST(req: NextRequest) {
     }
 
     // ── STEP 4: AI Generation (for RESULTS_INFO, GENERAL, or KB misses) ──────
-    const stage = stageContext || 'General Election Education';
-    const modeInstruction = mode === 'journey'
+    const stage = safeStageContext;
+    const modeInstruction = safeMode === 'journey'
       ? 'Give a detailed, structured, step-by-step educational response with clear sections.'
       : 'Keep the response conversational, engaging, and under 300 words. Use bullet points sparingly.';
 
