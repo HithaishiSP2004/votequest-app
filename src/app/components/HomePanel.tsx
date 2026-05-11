@@ -1,7 +1,7 @@
 'use client';
 import React, { useState, useEffect, useRef } from 'react';
 import { useLang } from '../lib/LangContext';
-import { IconVote, IconShield, IconCalendar, IconUsers, IconArrowRight, IconLightning, IconTrendingUp, IconStar, IconTarget } from './Icons';
+import { IconVote, IconShield, IconCalendar, IconUsers, IconArrowRight, IconLightning, IconTrendingUp, IconStar, IconTarget, IconMap } from './Icons';
 
 type Tab = 'home' | 'chat' | 'journey' | 'quiz' | 'find' | 'resources' | 'advisor';
 
@@ -102,14 +102,14 @@ export default function HomePanel({ onNavigate, xp, quizScore }: HomePanelProps)
             Master India's election process through an <strong style={{ color:'var(--text)' }}>interactive, AI-powered</strong> experience. From EPIC registration to government formation — understand every step of the world's largest democracy.
           </p>
           <div style={{ display:'flex', gap:12, flexWrap:'wrap' }}>
-            <button className="btn-saffron" aria-label="Start learning with chat assistant" onClick={() => onNavigate('chat')} style={{ gap:8 }}>
+            <button className="btn-saffron" aria-label="Start learning with chat assistant" onClick={() => onNavigate('chat')} style={{ display:'flex', alignItems:'center', gap:8 }}>
               <IconArrowRight size={16} strokeWidth={2.5} /> {t('start_learning')}
             </button>
-            <button className="btn-secondary" aria-label="Open election journey map" onClick={() => onNavigate('journey')}>
-              🗺️ {t('see_journey')}
+            <button className="btn-secondary" aria-label="Open election journey map" onClick={() => onNavigate('journey')} style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <IconMap size={16} strokeWidth={2} color="var(--primary)" /> {t('see_journey')}
             </button>
-            <button className="btn-secondary" aria-label="Open quiz arena" onClick={() => onNavigate('quiz')}>
-              🎯 {t('take_quiz')}
+            <button className="btn-secondary" aria-label="Open quiz arena" onClick={() => onNavigate('quiz')} style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <IconTarget size={16} strokeWidth={2} color="#FF9933" /> {t('take_quiz')}
             </button>
           </div>
         </div>

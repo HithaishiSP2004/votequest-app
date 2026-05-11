@@ -91,13 +91,21 @@ export default function Home() {
 
           {/* Logo */}
           <button aria-label="Go to home" onClick={() => setActiveTab('home')} style={{ display: 'flex', alignItems: 'center', gap: 11, background: 'none', border: 'none', cursor: 'pointer', padding: 0, flexShrink: 0 }}>
-            <div style={{ width: 38, height: 38, borderRadius: 10, background: 'linear-gradient(135deg,#6c63ff,#00d4ff)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 0 18px rgba(108,99,255,0.45)', flexShrink: 0 }}>
-              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-              </svg>
+            {/* India tricolor badge logo */}
+            <div style={{ width: 38, height: 38, borderRadius: 10, overflow: 'hidden', position: 'relative', flexShrink: 0, boxShadow: '0 0 20px rgba(255,153,51,0.4), 0 0 8px rgba(19,136,8,0.3)' }}>
+              <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '34%', background: '#FF9933' }} />
+              <div style={{ position: 'absolute', top: '33%', left: 0, right: 0, height: '34%', background: '#f5f5f5' }} />
+              <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '34%', background: '#138808' }} />
+              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
+                  <circle cx="12" cy="12" r="9.5" fill="rgba(10,10,28,0.62)" />
+                  <polyline points="7 12.5 10.5 16 17 8.5" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"/>
+                </svg>
+              </div>
             </div>
-            <div style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.35rem', fontWeight:900, letterSpacing:'-0.5px', whiteSpace:'nowrap', background:'linear-gradient(135deg,#e8e8f0 35%,#6c63ff 65%,#00d4ff 100%)', WebkitBackgroundClip:'text', WebkitTextFillColor:'transparent', backgroundClip:'text' }}>
-              VoteQuest
+            {/* "Vote" in saffron, "Quest" in green */}
+            <div style={{ fontFamily:"'Outfit',sans-serif", fontSize:'1.35rem', fontWeight:900, letterSpacing:'-0.5px', whiteSpace:'nowrap' }}>
+              <span style={{ color:'#FF9933' }}>Vote</span><span style={{ color:'#138808' }}>Quest</span>
             </div>
           </button>
 
